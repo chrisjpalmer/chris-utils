@@ -1,0 +1,60 @@
+#!/usr/bin/env swift
+
+// Based on https://github.com/chbrown/macos-pasteboard/issues/8#issuecomment-906537204
+// https://apple.stackexchange.com/questions/390864/using-pbcopy-pbpaste-with-rich-text-formatting-results-in-empty-clipboard
+// https://github.com/chbrown/macos-pasteboard/blob/master/pbv.swift
+// https://superuser.com/questions/912712/how-to-send-rich-text-to-the-clipboard-from-command-line
+// https://chromium.googlesource.com/chromium/src/+/refs/heads/main/ui/base/clipboard/clipboard_constants_mac.mm
+
+import Cocoa
+import Foundation
+
+let pasteboard: NSPasteboard = .general
+
+enum MyError: Error {
+    case runtimeError(String)
+}
+
+var titles: [String] = []
+var urls: [String] = []
+var isTitle = true
+while let line = readLine() {
+    if isTitle {
+        titles.append(line)
+        isTitle = false
+    } else {
+        urls.append(line)
+        isTitle = true
+    }
+}
+if titles.count != urls.count {
+    throw MyError.runtimeError("titles and urls dont have the same length")
+}
+
+// print("titles", titles)
+// print("urls", urls)
+
+var texts: [String] = []
+var htmls: [String] = []
+
+for i in 0...titles.count-1{
+    let heading = titles[i]
+    let url = urls[i]
+
+    texts.append(heading)
+    htmls.append("<a href='\(url)'>\(heading)</a>")
+}
+
+// print("texts", texts)
+// print("htmls", htmls)
+
+
+let textData = texts.joined(separator: "\n").data(using: .utf8)!
+let htmlData = htmls.joined(separator: "<br>").data(using: .utf8)!
+pasteboard.clearContents()
+
+// for url pasting to work in slack,
+// you need both these pieces of data in the clipboard
+pasteboard.setData(textData,  forType: NSPasteboard.PasteboardType(rawValue: "public.utf8-plain-text"))
+pasteboard.setData(htmlData,  forType: NSPasteboard.PasteboardType(rawValue: "public.html"))
+exit(0)

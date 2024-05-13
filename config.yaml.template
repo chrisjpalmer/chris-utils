@@ -1,0 +1,8 @@
+# bitbucket api token
+apiToken: <>
+
+# the bitbucket workspace
+workspace: <>
+
+# bitbucket username
+user: <>
