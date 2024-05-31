@@ -1,10 +1,11 @@
-# bitbucket api token
+# bitbucket api token (generate an app password)
 apiToken: <>
 
 # the bitbucket workspace
 workspace: <>
 
 # bitbucket username
+# e.g. user: christopher-palmer
 user: <>
 
 # team members
@@ -13,4 +14,5 @@ team:
   - john smith
 
 # your name in the team
+# e.g. me: christopher palmer
 me: <>
