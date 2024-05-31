@@ -20,7 +20,7 @@ export async function loadUsers(users: string[]): Promise<User[]> {
         saveCache(cache)
     }
 
-    return cache.users;
+    return <User[]> users.map(u => cache.users.find(_u => _u.name == u)).filter(_u => !!_u)
 }
 
 interface Cache {

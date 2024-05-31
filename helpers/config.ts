@@ -6,6 +6,7 @@ export interface Config {
     workspace: string;
     user: string;
     team: string[];
+    me: string
 }
 export function loadConfig(): Config {
     let f = fs.readFileSync('./config.yaml').toString()

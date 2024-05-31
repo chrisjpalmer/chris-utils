@@ -11,3 +11,6 @@ user: <>
 team:
   - joe blogs
   - john smith
+
+# your name in the team
+me: <>

@@ -5,8 +5,16 @@ async function prlist () {
     // config
     let cfg = loadConfig()
 
+    // get some users to load (either from args or the cfg.team variable)
+    let usersInput = process.argv.slice(2).join(" ")
+    let usersToLoad = cfg.team
+    if(usersInput.length > 0) {
+        usersToLoad = usersInput.split(",").map(u => u.trim())
+    }
+
     // resolve users
-    let users = await loadUsers(cfg.team);
+    let users = await loadUsers(usersToLoad);
+    let me = (await loadUsers([cfg.me]))[0]
 
     // get all the users' prs
     for(const user of users) {
@@ -17,6 +25,18 @@ async function prlist () {
 
         console.log(`${user.name} -------------------------------`)
         for(const pr of prs) {
+            let activity = await getPrActivityLog(cfg, pr.source.repository.name, pr.id)
+            let approvals = activity.filter(a => !!a.approval).length;
+            let approvalsText = approvals > 0 ? ` - [ 👍 ${approvals} ]` : ''
+
+             // only get ones I'm reviewing
+            if(user.name != me.name) {
+                const imreviewing = isReviewing(activity, me)
+                if (!imreviewing) {
+                    continue
+                }
+            }
+
             let statuses = await getPrStatuses(cfg, pr.source.repository.name, pr.id)
             let statusText = statuses.map(s => {
                 const st = s.state;
@@ -32,10 +52,6 @@ async function prlist () {
                 }
             }).join('')
             statusText = statusText.length > 0 ? ` - ${statusText}` : ''
-
-            let activity = await getPrActivityLog(cfg, pr.source.repository.name, pr.id)
-            let approvals = activity.filter(a => !!a.approval).length;
-            let approvalsText = approvals > 0 ? ` - [ 👍 ${approvals} ]` : ''
             
             let url = pr.links.html.href;
             let title = pr.title
@@ -76,9 +92,22 @@ async function getUserPrs(cfg:Config, user:User): Promise<PR[]> {
     return prs
 }
 
+function isReviewing(activity: PRActivity[], me: User): boolean {
+    for(const act of activity) {
+        if(!!act.update) {
+            for (const reviewer of act.update.reviewers) {
+                if (reviewer.account_id == me.accountUuid) {
+                    return true
+                }
+            }
+        }
+    }
+    return false
+}
+
 async function getPrStatuses(cfg:Config, repo: string, prid: number): Promise<PRStatus[]> {
     let prs:PRStatus[] = []
-    let nextUrl = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repo}/pullrequests/${prid}/statuses`
+    let nextUrl = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repo}/pullrequests/${prid}/statuses?fields=${encodeURIComponent('-links')}`
     for (;;) {
 
         let rsp:AxiosResponse<ApiResponse<PRStatus>> = await axios.get(
@@ -161,6 +190,11 @@ interface PR {
     }
 }
 
+interface Account {
+    account_id: string
+    nickname: string
+}
+
 interface PRStatus {
     type: string;
     id: number;
@@ -169,18 +203,11 @@ interface PRStatus {
     name: string;
     uuid: string;
     state: 'SUCCESSFUL' | 'FAILED' | 'STOPPED' | 'INPROGRESS'
-    // links: {
-    //     self: {
-    //         href: string;
-    //     },
-    //     html: {
-    //         href: string;
-    //     }
-    // },
 }
 
 interface PRActivity {
     approval: {nickname: string}
+    update: {reviewers: Account[]}
 }
 
 prlist();
