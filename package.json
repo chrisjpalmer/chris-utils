@@ -1,19 +1,19 @@
 {
-  "scripts": {
-    "rebase": "ts-node rebase.ts"
-  },
+  "scripts": {},
   "devDependencies": {
-    "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   },
   "dependencies": {
     "@types/blessed": "^0.1.25",
+    "@types/ora": "^3.2.0",
     "@types/readline-sync": "^1.4.8",
     "@types/shelljs": "^0.8.15",
     "axios": "^1.6.8",
     "blessed": "^0.1.81",
+    "ora": "^8.0.1",
     "readline-sync": "^1.4.10",
     "shelljs": "^0.8.5",
+    "tsx": "^4.11.0",
     "yaml": "^2.4.2"
   }
 }

@@ -6,4 +6,4 @@ INSTALL_DIR=$HOME/scripts
 
 cd $INSTALL_DIR
 
-$INSTALL_DIR/node_modules/.bin/ts-node body.ts $@
+$INSTALL_DIR/node_modules/.bin/tsx body.ts $@
