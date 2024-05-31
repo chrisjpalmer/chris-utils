@@ -190,7 +190,7 @@ async function getUserSelection(items: string[]): Promise<string> {
     const sc = screen({smartCSR: true})
     const ls = list({
         parent: sc, // Can't capture events if we use screen.append(taskList)
-        width: 20,
+        width: 50,
         keys: true, 
         items: items,
         style: {
