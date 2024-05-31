@@ -7,9 +7,11 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@types/blessed": "^0.1.25",
     "@types/readline-sync": "^1.4.8",
     "@types/shelljs": "^0.8.15",
     "axios": "^1.6.8",
+    "blessed": "^0.1.81",
     "readline-sync": "^1.4.10",
     "shelljs": "^0.8.5",
     "yaml": "^2.4.2"

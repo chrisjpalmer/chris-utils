@@ -1,6 +1,6 @@
 import { loadConfig, loadUsers, User, Config } from "./helpers"
 import axios, { AxiosResponse } from 'axios';
-
+import { screen, list } from 'blessed';
 async function prlist () {
     // config
     let cfg = loadConfig()
@@ -9,8 +9,15 @@ async function prlist () {
     let usersInput = process.argv.slice(2).join(" ")
     let usersToLoad = cfg.team
     if(usersInput.length > 0) {
-        usersToLoad = usersInput.split(",").map(u => u.trim())
+        if (usersInput == "-c") {
+            usersToLoad = [await getUserSelection(cfg.team)]
+        } else {
+            usersToLoad = usersInput.split(",").map(u => u.trim())
+        }
     }
+
+    console.log("...getting prs")
+    console.log("...")
 
     // resolve users
     let users = await loadUsers(usersToLoad);
@@ -27,7 +34,12 @@ async function prlist () {
         for(const pr of prs) {
             let activity = await getPrActivityLog(cfg, pr.source.repository.name, pr.id)
             let approvals = activity.filter(a => !!a.approval).length;
-            let approvalsText = approvals > 0 ? ` - [ 👍 ${approvals} ]` : ''
+            let approvalsText = ` - [ ❗ ${approvals} ]`
+            if (isApprover(activity, me)) {
+                approvalsText = ` - [ 🎉 ${approvals} ]`
+            } else if(approvals >= 2) {
+                approvalsText = ` - [ 👍 ${approvals} ]`
+            }
 
              // only get ones I'm reviewing
             if(user.name != me.name) {
@@ -105,6 +117,17 @@ function isReviewing(activity: PRActivity[], me: User): boolean {
     return false
 }
 
+function isApprover(activity: PRActivity[], me: User): boolean {
+    for(const act of activity) {
+        if(!!act.approval) {
+            if (act.approval.user.account_id == me.accountUuid) {
+                return true
+            }
+        }
+    }
+    return false
+}
+
 async function getPrStatuses(cfg:Config, repo: string, prid: number): Promise<PRStatus[]> {
     let prs:PRStatus[] = []
     let nextUrl = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repo}/pullrequests/${prid}/statuses?fields=${encodeURIComponent('-links')}`
@@ -163,6 +186,32 @@ async function getPrActivityLog(cfg:Config, repo: string, prid: number): Promise
     return prs
 }
 
+async function getUserSelection(items: string[]): Promise<string> {
+    const sc = screen({smartCSR: true})
+    const ls = list({
+        parent: sc, // Can't capture events if we use screen.append(taskList)
+        width: 20,
+        keys: true, 
+        items: items,
+        style: {
+            selected: { bg: 'blue' },
+            item: { fg: 'magenta' }
+        },
+        keyable: true,
+    })
+    sc.key(['escape', 'q', 'C-c'], function() { sc.destroy(); process.exit(0); });
+   
+    let selected = new Promise<string>((resolve, reject) => {
+        ls.on('select', (item, index) => {
+            sc.destroy()
+            resolve(items[index])
+        })
+    })
+    sc.render()
+
+    return await selected
+}
+
 interface ApiResponse<T> {
     type: string;
     values: T[];
@@ -206,7 +255,7 @@ interface PRStatus {
 }
 
 interface PRActivity {
-    approval: {nickname: string}
+    approval: {user: Account}
     update: {reviewers: Account[]}
 }
 
