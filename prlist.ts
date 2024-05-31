@@ -1,9 +1,18 @@
 import { loadConfig, loadUsers, User, Config } from "./helpers"
 import axios, { AxiosResponse } from 'axios';
 import { screen, list } from 'blessed';
+
+import ora from 'ora'
+import { Ora } from 'ora'
+
 async function prlist () {
     // config
     let cfg = loadConfig()
+
+    // handle Ctrl + c
+    process.on('SIGINT', function() {
+        process.exit();
+    });
 
     // get some users to load (either from args or the cfg.team variable)
     let usersInput = process.argv.slice(2).join(" ")
@@ -16,21 +25,27 @@ async function prlist () {
         }
     }
 
-    console.log("...getting prs")
-    console.log("...")
-
     // resolve users
+    const spinAfter = new SpinAfter(2000);
+    spinAfter.start("Loading users")
     let users = await loadUsers(usersToLoad);
     let me = (await loadUsers([cfg.me]))[0]
+    spinAfter.stop()
+
 
     // get all the users' prs
     for(const user of users) {
+        spinAfter.start(`Fetching PR list for ${user.name}`);
         let prs = await getUserPrs(cfg, user)
+        spinAfter.stop()
+
         if (prs.length == 0) {
             continue;
         }
 
         console.log(`${user.name} -------------------------------`)
+        
+        spinAfter.start(`Filtering PRs...`);
         for(const pr of prs) {
             let activity = await getPrActivityLog(cfg, pr.source.repository.name, pr.id)
             let approvals = activity.filter(a => !!a.approval).length;
@@ -68,9 +83,10 @@ async function prlist () {
             let url = pr.links.html.href;
             let title = pr.title
 
-
+            spinAfter.reset()
             console.log(`\t${title} - ${url}${statusText}${approvalsText}`)
         }
+        spinAfter.stop()
         console.log("")
     }
 }
@@ -210,6 +226,42 @@ async function getUserSelection(items: string[]): Promise<string> {
     sc.render()
 
     return await selected
+}
+
+class SpinAfter {
+    timeoutId: NodeJS.Timeout | null
+    spinAfter: number
+    spinner: Ora
+
+    constructor(spinAfter: number) {
+        this.spinAfter = spinAfter;
+        this.timeoutId = null;
+        this.spinner = ora();
+    }
+
+    start(message: string) {
+        this.spinner.text = message;
+        this._start();
+    }
+
+    private _start() {
+        this.timeoutId = setTimeout(() => {
+            this.spinner.start()
+            this.timeoutId = null;
+        }, this.spinAfter)
+    }
+
+    reset() {
+        this.stop()
+        this._start();
+    }
+
+    stop() {
+        this.spinner.stop()
+        if(this.timeoutId !== null) {
+            clearTimeout(this.timeoutId)
+        }
+    }
 }
 
 interface ApiResponse<T> {
