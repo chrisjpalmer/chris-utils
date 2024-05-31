@@ -36,7 +36,8 @@ async function prlist () {
     // get all the users' prs
     for(const user of users) {
         spinAfter.start(`Fetching PR list for ${user.name}`);
-        let prs = await getUserPrs(cfg, user)
+        let reviewer = user.accountUuid == me.accountUuid ? null : me
+        let prs = await getUserPrs(cfg, user, reviewer)
         spinAfter.stop()
 
         if (prs.length == 0) {
@@ -45,7 +46,7 @@ async function prlist () {
 
         console.log(`${user.name} -------------------------------`)
         
-        spinAfter.start(`Filtering PRs...`);
+        spinAfter.start(`Fetching PR metadata...`);
         for(const pr of prs) {
             let activity = await getPrActivityLog(cfg, pr.source.repository.name, pr.id)
             let approvals = activity.filter(a => !!a.approval).length;
@@ -54,14 +55,6 @@ async function prlist () {
                 approvalsText = ` - [ 🎉 ${approvals} ]`
             } else if(approvals >= 2) {
                 approvalsText = ` - [ 👍 ${approvals} ]`
-            }
-
-             // only get ones I'm reviewing
-            if(user.name != me.name) {
-                const imreviewing = isReviewing(activity, me)
-                if (!imreviewing) {
-                    continue
-                }
             }
 
             let statuses = await getPrStatuses(cfg, pr.source.repository.name, pr.id)
@@ -91,9 +84,15 @@ async function prlist () {
     }
 }
 
-async function getUserPrs(cfg:Config, user:User): Promise<PR[]> {
+async function getUserPrs(cfg:Config, user:User, hasReviewer:User | null): Promise<PR[]> {
+    let query = `state = "OPEN"`
+    if (!!hasReviewer) {
+        query = `state = "OPEN" AND reviewers.account_id = "${hasReviewer.accountUuid}"`
+    }
+    query = encodeURIComponent(query)
+
     let prs:PR[] = []
-    let nextUrl = `https://api.bitbucket.org/2.0/pullrequests/${user.accountUuid}?state=OPEN`
+    let nextUrl = `https://api.bitbucket.org/2.0/pullrequests/${user.accountUuid}?q=${query}`
     for (;;) {
 
         let rsp:AxiosResponse<ApiResponse<PR>> = await axios.get(
@@ -118,19 +117,6 @@ async function getUserPrs(cfg:Config, user:User): Promise<PR[]> {
     }
 
     return prs
-}
-
-function isReviewing(activity: PRActivity[], me: User): boolean {
-    for(const act of activity) {
-        if(!!act.update) {
-            for (const reviewer of act.update.reviewers) {
-                if (reviewer.account_id == me.accountUuid) {
-                    return true
-                }
-            }
-        }
-    }
-    return false
 }
 
 function isApprover(activity: PRActivity[], me: User): boolean {
