@@ -5,11 +5,13 @@
   },
   "dependencies": {
     "@types/blessed": "^0.1.25",
+    "@types/command-line-args": "^5.2.3",
     "@types/ora": "^3.2.0",
     "@types/readline-sync": "^1.4.8",
     "@types/shelljs": "^0.8.15",
     "axios": "^1.6.8",
     "blessed": "^0.1.81",
+    "command-line-args": "^5.2.1",
     "ora": "^8.0.1",
     "readline-sync": "^1.4.10",
     "shelljs": "^0.8.5",

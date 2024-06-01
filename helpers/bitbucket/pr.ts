@@ -3,12 +3,15 @@ import { UserSummary } from "./cache";
 import { Account } from "./account";
 import { getAll } from "./client";
 
-export async function getPrsMadeByUser(cfg:Config, user:UserSummary, hasReviewer:UserSummary | null): Promise<PR[]> {
-    let query = `state = "OPEN"`
-    if (!!hasReviewer) {
-        query = `state = "OPEN" AND reviewers.account_id = "${hasReviewer.accountUuid}"`
+export async function getPrsMadeByUser(cfg:Config, user:UserSummary, reviewedBy:UserSummary | null, onlyMaster: boolean): Promise<PR[]> {
+    let conditions = [`state = "OPEN"`]
+    if (!!reviewedBy) {
+        conditions.push(`reviewers.account_id = "${reviewedBy.accountUuid}"`)
     }
-    query = encodeURIComponent(query)
+    if(onlyMaster) {
+        conditions.push(`(destination.branch.name = "master" OR destination.branch.name = "main")`)
+    }
+    const query = encodeURIComponent(conditions.join(" AND "))
     
     return getAll(cfg, `https://api.bitbucket.org/2.0/pullrequests/${user.accountUuid}?q=${query}`)
 }

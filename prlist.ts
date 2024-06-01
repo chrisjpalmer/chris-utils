@@ -1,10 +1,19 @@
 import { SpinAfter, loadConfig } from "./helpers"
 import { screen, list } from 'blessed';
-
-
 import { PRActivity, UserSummary, getPrActivity, getPrStatuses, getPrsMadeByUser, loadUsers } from "./helpers/bitbucket";
+import commandLineArgs, { OptionDefinition } from "command-line-args";
 
 async function prlist () {
+    // command line flags
+    const optionDefinitions: OptionDefinition[] = [
+        { name: 'choose', alias: 'c', type: Boolean },
+        { name: 'user', alias: 'u', type: String, multiple: true },
+        { name: 'only-master', alias: 'm', type: Boolean },
+        { name: 'only-main', type: Boolean },
+    ]
+
+    const options = commandLineArgs(optionDefinitions);
+
     // config
     let cfg = loadConfig()
 
@@ -14,15 +23,15 @@ async function prlist () {
     });
 
     // get some users to load (either from args or the cfg.team variable)
-    let usersInput = process.argv.slice(2).join(" ")
     let usersToLoad = cfg.team
-    if(usersInput.length > 0) {
-        if (usersInput == "-c") {
-            usersToLoad = [await getUserSelection(cfg.team)]
-        } else {
-            usersToLoad = usersInput.split(",").map(u => u.trim())
-        }
+    if(options["choose"]) {
+        usersToLoad = [await getUserSelection(cfg.team)]
+    } else if(options["user"] != "") {
+        let words =  options["user"]
+        usersToLoad = words.join(" ").split(",").map(u => u.trim())
     }
+
+    let onlyMaster = options["only-master"] || options["only-main"]
 
     // resolve users
     const spinAfter = new SpinAfter(2000);
@@ -36,7 +45,7 @@ async function prlist () {
     for(const user of users) {
         spinAfter.start(`Fetching PR list for ${user.name}`);
         let reviewer = user.accountUuid == me.accountUuid ? null : me
-        let prs = await getPrsMadeByUser(cfg, user, reviewer)
+        let prs = await getPrsMadeByUser(cfg, user, reviewer, onlyMaster)
         spinAfter.stop()
 
         if (prs.length == 0) {
