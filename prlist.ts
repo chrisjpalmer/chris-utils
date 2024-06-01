@@ -1,6 +1,6 @@
-import { SpinAfter, loadConfig } from "./helpers"
+import { OrderedTaskQueue, Outcome, SpinAfter, Task, loadConfig } from "./helpers"
 import { screen, list } from 'blessed';
-import { PRActivity, UserSummary, getPrActivity, getPrStatuses, getPrsMadeByUser, loadUsers } from "./helpers/bitbucket";
+import { PR, PRActivity, PRStatus, UserSummary, getPrActivity, getPrStatuses, getPrsMadeByUser, loadUsers } from "./helpers/bitbucket";
 import commandLineArgs, { OptionDefinition } from "command-line-args";
 
 async function prlist () {
@@ -26,8 +26,8 @@ async function prlist () {
     let usersToLoad = cfg.team
     if(options["choose"]) {
         usersToLoad = [await getUserSelection(cfg.team)]
-    } else if(options["user"] != "") {
-        let words =  options["user"]
+    } else if(options["user"] != null) {
+        let words = options["user"]
         usersToLoad = words.join(" ").split(",").map(u => u.trim())
     }
 
@@ -55,41 +55,75 @@ async function prlist () {
         console.log(`${user.name} -------------------------------`)
         
         spinAfter.start(`Fetching PR metadata...`);
-        for(const pr of prs) {
-            let activity = await getPrActivity(cfg, pr.source.repository.name, pr.id)
-            let approvals = activity.filter(a => !!a.approval).length;
-            let approvalsText = ` - [ ❗ ${approvals} ]`
-            if (isApprover(activity, me)) {
-                approvalsText = ` - [ 🎉 ${approvals} ]`
-            } else if(approvals >= 2) {
-                approvalsText = ` - [ 👍 ${approvals} ]`
-            }
+        let start = performance.now()
 
-            let statuses = await getPrStatuses(cfg, pr.source.repository.name, pr.id)
-            let statusText = statuses.map(s => {
-                const st = s.state;
-                switch(st) {
-                    case 'SUCCESSFUL':
-                        return '✅'
-                    case 'FAILED':
-                        return '❌'
-                    case 'INPROGRESS':
-                        return '🔄'
-                    default:
-                        return '🤷'
+        // fetch metadata
+        let tasks:Task<PRMetadata>[] = prs.map((pr, idx) => {
+            return {
+                id: `${idx}`,
+                do: async () => {
+                    // console.log("fetching metadata for pr", pr.id)
+                    let activityP = getPrActivity(cfg, pr.source.repository.name, pr.id)
+                    let statusesP = getPrStatuses(cfg, pr.source.repository.name, pr.id)
+                    let activity = await activityP
+                    let statuses = await statusesP
+                    return {pr, activity, statuses}
                 }
-            }).join('')
-            statusText = statusText.length > 0 ? ` - ${statusText}` : ''
-            
-            let url = pr.links.html.href;
-            let title = pr.title
+            }
+        })
+        let taskQueue = new OrderedTaskQueue<PRMetadata>(16, (_, outcome) => printer(outcome, spinAfter, me))
+        await taskQueue.do(tasks)
 
-            spinAfter.reset()
-            console.log(`\t${title} - ${url}${statusText}${approvalsText}`)
-        }
         spinAfter.stop()
+        console.log(`[fetched in ${Math.round(performance.now() - start)}ms]`)
         console.log("")
     }
+}
+
+function printer(outcome:Outcome<PRMetadata>, spinAfter:SpinAfter, me:UserSummary) {
+    spinAfter.reset()
+
+    if(!!outcome.err) {
+        console.log('\tfailed to fetch metadata')
+        return;
+    }
+
+    const {pr, activity, statuses} = <PRMetadata> outcome.result;
+
+    let approvals = activity.filter(a => !!a.approval).length;
+    let approvalsText = ` - [ ❗ ${approvals} ]`
+    if (isApprover(activity, me)) {
+        approvalsText = ` - [ 🎉 ${approvals} ]`
+    } else if(approvals >= 2) {
+        approvalsText = ` - [ 👍 ${approvals} ]`
+    }
+
+    let statusText = statuses.map(s => {
+        const st = s.state;
+        switch(st) {
+            case 'SUCCESSFUL':
+                return '✅'
+            case 'FAILED':
+                return '❌'
+            case 'INPROGRESS':
+                return '🔄'
+            default:
+                return '🤷'
+        }
+    }).join('')
+    statusText = statusText.length > 0 ? ` - ${statusText}` : ''
+    
+    let url = pr.links.html.href;
+    let title = pr.title
+
+    
+    console.log(`\t${title} - ${url}${statusText}${approvalsText}`)
+}
+
+interface PRMetadata {
+    pr: PR, 
+    activity: PRActivity[], 
+    statuses: PRStatus[]
 }
 
 function isApprover(activity: PRActivity[], me: UserSummary): boolean {
