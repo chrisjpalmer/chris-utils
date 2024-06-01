@@ -2,6 +2,7 @@ import { getBranches, loadConfig, getWorkdir } from "./helpers"
 import * as shelljs from 'shelljs';
 import axios, { AxiosResponse } from 'axios';
 import * as path from 'path';
+import { PR, getAll } from "./helpers/bitbucket";
 
 async function prs () {
     // config
@@ -17,21 +18,13 @@ async function prs () {
         let commit = shelljs.exec(`git rev-parse --short ${branch}`, {cwd:workdir, silent: true}).toString()
         let msg = shelljs.exec(`git log --format=%B -n 1 ${commit}`, {cwd:workdir, silent: true}).toString()
         msg = msg.split("\n")[0]
+        
+        const prs = await getAll<PR>(cfg, `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}/commit/${commit}/pullrequests`)
 
-
-        let rsp:AxiosResponse<ApiResponse> = await axios.get(
-            `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}/commit/${commit}/pullrequests`, 
-            {
-                auth:{
-                    username: cfg.user, 
-                    password: cfg.apiToken
-                }
-            }
-        )
-        if(rsp.data.values.length == 0) {
+        if(prs.length == 0) {
             throw 'api response values was empty'
         }
-        let url = rsp.data.values[0].links.html.href;
+        let url = prs[0].links.html.href;
 
         let link = `${i+1}. ${msg}\n${url}`
         console.log(`${msg} - ${url}`)
@@ -48,27 +41,6 @@ async function prs () {
 function urlpaste(data:string) {
     // use special custom hyperlink utility
     shelljs.exec(`echo \"${data}\" |  urlpaste`, {silent: true})
-}
-
-interface ApiResponse {
-    type: string;
-    values: Value[];
-    page: number;
-    pagelen: number;
-}
-
-interface Value {
-    type: string;
-    id: number;
-    title: string;
-    links: {
-        self: {
-            href: string;
-        },
-        html: {
-            href: string;
-        }
-    }
 }
 
 prs()

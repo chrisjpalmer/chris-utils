@@ -1,9 +1,8 @@
-import { loadConfig, loadUsers, User, Config } from "./helpers"
-import axios, { AxiosResponse } from 'axios';
+import { SpinAfter, loadConfig } from "./helpers"
 import { screen, list } from 'blessed';
 
-import ora from 'ora'
-import { Ora } from 'ora'
+
+import { PRActivity, UserSummary, getPrActivity, getPrStatuses, getPrsMadeByUser, loadUsers } from "./helpers/bitbucket";
 
 async function prlist () {
     // config
@@ -28,8 +27,8 @@ async function prlist () {
     // resolve users
     const spinAfter = new SpinAfter(2000);
     spinAfter.start("Loading users")
-    let users = await loadUsers(usersToLoad);
-    let me = (await loadUsers([cfg.me]))[0]
+    let users = await loadUsers(cfg, usersToLoad);
+    let me = (await loadUsers(cfg, [cfg.me]))[0]
     spinAfter.stop()
 
 
@@ -37,7 +36,7 @@ async function prlist () {
     for(const user of users) {
         spinAfter.start(`Fetching PR list for ${user.name}`);
         let reviewer = user.accountUuid == me.accountUuid ? null : me
-        let prs = await getUserPrs(cfg, user, reviewer)
+        let prs = await getPrsMadeByUser(cfg, user, reviewer)
         spinAfter.stop()
 
         if (prs.length == 0) {
@@ -48,7 +47,7 @@ async function prlist () {
         
         spinAfter.start(`Fetching PR metadata...`);
         for(const pr of prs) {
-            let activity = await getPrActivityLog(cfg, pr.source.repository.name, pr.id)
+            let activity = await getPrActivity(cfg, pr.source.repository.name, pr.id)
             let approvals = activity.filter(a => !!a.approval).length;
             let approvalsText = ` - [ ❗ ${approvals} ]`
             if (isApprover(activity, me)) {
@@ -84,42 +83,7 @@ async function prlist () {
     }
 }
 
-async function getUserPrs(cfg:Config, user:User, hasReviewer:User | null): Promise<PR[]> {
-    let query = `state = "OPEN"`
-    if (!!hasReviewer) {
-        query = `state = "OPEN" AND reviewers.account_id = "${hasReviewer.accountUuid}"`
-    }
-    query = encodeURIComponent(query)
-
-    let prs:PR[] = []
-    let nextUrl = `https://api.bitbucket.org/2.0/pullrequests/${user.accountUuid}?q=${query}`
-    for (;;) {
-
-        let rsp:AxiosResponse<ApiResponse<PR>> = await axios.get(
-            nextUrl, 
-            {
-                auth:{
-                    username: cfg.user, 
-                    password: cfg.apiToken
-                }
-            }
-        )
-
-        let values = rsp.data.values || [];
-        
-        prs.push(...values)
-
-        if(!rsp.data.next) {
-            break;
-        }
-
-        nextUrl = rsp.data.next
-    }
-
-    return prs
-}
-
-function isApprover(activity: PRActivity[], me: User): boolean {
+function isApprover(activity: PRActivity[], me: UserSummary): boolean {
     for(const act of activity) {
         if(!!act.approval) {
             if (act.approval.user.account_id == me.accountUuid) {
@@ -130,63 +94,6 @@ function isApprover(activity: PRActivity[], me: User): boolean {
     return false
 }
 
-async function getPrStatuses(cfg:Config, repo: string, prid: number): Promise<PRStatus[]> {
-    let prs:PRStatus[] = []
-    let nextUrl = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repo}/pullrequests/${prid}/statuses?fields=${encodeURIComponent('-links')}`
-    for (;;) {
-
-        let rsp:AxiosResponse<ApiResponse<PRStatus>> = await axios.get(
-            nextUrl, 
-            {
-                auth:{
-                    username: cfg.user, 
-                    password: cfg.apiToken
-                }
-            }
-        )
-
-        let values = rsp.data.values || [];
-        
-        prs.push(...values)
-
-        if(!rsp.data.next) {
-            break;
-        }
-
-        nextUrl = rsp.data.next
-    }
-
-    return prs
-}
-
-async function getPrActivityLog(cfg:Config, repo: string, prid: number): Promise<PRActivity[]> {
-    let prs:PRActivity[] = []
-    let nextUrl = `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repo}/pullrequests/${prid}/activity`
-    for (;;) {
-
-        let rsp:AxiosResponse<ApiResponse<PRActivity>> = await axios.get(
-            nextUrl, 
-            {
-                auth:{
-                    username: cfg.user, 
-                    password: cfg.apiToken
-                }
-            }
-        )
-
-        let values = rsp.data.values || [];
-        
-        prs.push(...values)
-
-        if(!rsp.data.next) {
-            break;
-        }
-
-        nextUrl = rsp.data.next
-    }
-
-    return prs
-}
 
 async function getUserSelection(items: string[]): Promise<string> {
     const sc = screen({smartCSR: true})
@@ -212,89 +119,6 @@ async function getUserSelection(items: string[]): Promise<string> {
     sc.render()
 
     return await selected
-}
-
-class SpinAfter {
-    timeoutId: NodeJS.Timeout | null
-    spinAfter: number
-    spinner: Ora
-
-    constructor(spinAfter: number) {
-        this.spinAfter = spinAfter;
-        this.timeoutId = null;
-        this.spinner = ora();
-    }
-
-    start(message: string) {
-        this.spinner.text = message;
-        this._start();
-    }
-
-    private _start() {
-        this.timeoutId = setTimeout(() => {
-            this.spinner.start()
-            this.timeoutId = null;
-        }, this.spinAfter)
-    }
-
-    reset() {
-        this.stop()
-        this._start();
-    }
-
-    stop() {
-        this.spinner.stop()
-        if(this.timeoutId !== null) {
-            clearTimeout(this.timeoutId)
-        }
-    }
-}
-
-interface ApiResponse<T> {
-    type: string;
-    values: T[];
-    page: number;
-    pagelen: number;
-    next: string;
-}
-
-interface PR {
-    type: string;
-    id: number;
-    title: string;
-    links: {
-        self: {
-            href: string;
-        },
-        html: {
-            href: string;
-        }
-    },
-    source: {
-        repository: {
-            name: string
-        }
-    }
-}
-
-interface Account {
-    account_id: string
-    nickname: string
-}
-
-interface PRStatus {
-    type: string;
-    id: number;
-    key: string;
-    refname: string;
-    name: string;
-    uuid: string;
-    state: 'SUCCESSFUL' | 'FAILED' | 'STOPPED' | 'INPROGRESS'
-}
-
-interface PRActivity {
-    approval: {user: Account}
-    update: {reviewers: Account[]}
 }
 
 prlist();
