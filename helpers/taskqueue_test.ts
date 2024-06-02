@@ -106,8 +106,8 @@ test("task queue", async (t) => {
         const testCase = tests[testKey];
 
         await t.test(testKey, async () => {
-            let queue = new TaskQueue<number>(testCase.concurrency, (task, outcome) => {
-                let _t = testCase.tasks.find(_t => _t.task.id == task.id)
+            let queue = new TaskQueue<number>(testCase.concurrency, (taskId, outcome) => {
+                let _t = testCase.tasks.find(_t => _t.task.id == taskId)
                 assert.notEqual(_t, null)
                 assert.deepEqual(_t?.want, outcome)
             })
@@ -205,9 +205,9 @@ test("task queue repeated use", async (t) => {
         await t.test(testKey, async () => {
             let useIdx = 0
 
-            let queue = new TaskQueue<number>(testCase.concurrency, (task, outcome) => {
+            let queue = new TaskQueue<number>(testCase.concurrency, (taskId, outcome) => {
                 const use = testCase.uses[useIdx]
-                let _t = use.tasks.find(_t => _t.task == task)
+                let _t = use.tasks.find(_t => _t.task.id == taskId)
                 assert.notEqual(_t, null)
                 assert.deepEqual(_t?.want, outcome)
             })

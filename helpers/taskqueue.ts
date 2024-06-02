@@ -1,12 +1,12 @@
 export type Task<R> = { id: string, do: () => Promise<R> }
-export type Callback<R> = (task:Task<R>, outcome:Outcome<R>) => void
+export type Callback<R> = (taskId:string, outcome:Outcome<R>) => void
 export type Outcome<R> = {
   result: R | null
   err: Error | null
 }
 
-type Wrapped<R> = {
-  task: Task<R>,
+export type WrappedOutcome<R> = {
+  taskId: string,
   outcome: Outcome<R>
 }
 
@@ -66,7 +66,7 @@ export class TaskQueue<R> {
       this.log('task issued', performance.now(), 'running: ', this.running, 'i: ', i)
 
       wrapTask(task).then((wrapped) => {
-        this.callback(wrapped.task, wrapped.outcome)
+        this.callback(wrapped.taskId, wrapped.outcome)
         this.todo--
         this.log('task completed', performance.now() ,'running: ', this.running, 'result', wrapped.outcome.result, 'todo', this.todo)
         if(this.todo == 0 && this.doneResolve) {
@@ -91,11 +91,11 @@ export class TaskQueue<R> {
 
 
 
-function wrapTask<R>(t:Task<R>): Promise<Wrapped<R>> {
+function wrapTask<R>(t:Task<R>): Promise<WrappedOutcome<R>> {
   let res = t.do();
   return res.then((r) => {
-    return {task:t, outcome:{result:r, err: null}}
+    return {taskId:t.id, outcome:{result:r, err: null}}
   }).catch(e => {
-    return {task:t, outcome:{result: null, err:e}}
+    return {taskId:t.id, outcome:{result: null, err:e}}
   })
 }
