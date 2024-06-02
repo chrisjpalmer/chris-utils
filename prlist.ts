@@ -34,7 +34,7 @@ async function prlist () {
     let onlyMaster = options["only-master"] || options["only-main"]
 
     // resolve users
-    const spinAfter = new SpinAfter(2000);
+    const spinAfter = new SpinAfter(1);
     spinAfter.start("Loading users")
     let users = await loadUsers(cfg, usersToLoad);
     let me = (await loadUsers(cfg, [cfg.me]))[0]
@@ -51,7 +51,10 @@ async function prlist () {
             }
         }
     })
-    let prTaskQueue = new OrderedTaskQueue<PR[]>(16, () => {})
+    let counter = 0;
+    let prTaskQueue = new OrderedTaskQueue<PR[]>(16, () => {
+        spinAfter.setMessage(`Fetching PR lists ${counter+1}/${users.length}`)
+    })
     let usersPrs = await prTaskQueue.do(getPrTasks)
     spinAfter.stop()
 

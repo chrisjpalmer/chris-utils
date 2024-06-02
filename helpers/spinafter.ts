@@ -17,6 +17,10 @@ export class SpinAfter {
         this._start();
     }
 
+    setMessage(message: string) {
+        this.spinner.text = message
+    }
+
     private _start() {
         this.timeoutId = setTimeout(() => {
             this.spinner.start()
