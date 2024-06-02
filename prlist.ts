@@ -40,14 +40,30 @@ async function prlist () {
     let me = (await loadUsers(cfg, [cfg.me]))[0]
     spinAfter.stop()
 
+    // resolve prs
+    spinAfter.start(`Fetching PR lists`);
+    let getPrTasks = users.map(user => {
+        return {
+            id: user.accountUuid,
+            do: async () => {
+                let reviewer = user.accountUuid == me.accountUuid ? null : me
+                return await getPrsMadeByUser(cfg, user, reviewer, onlyMaster)
+            }
+        }
+    })
+    let prTaskQueue = new OrderedTaskQueue<PR[]>(16, () => {})
+    let usersPrs = await prTaskQueue.do(getPrTasks)
+    spinAfter.stop()
 
     // get all the users' prs
-    for(const user of users) {
-        spinAfter.start(`Fetching PR list for ${user.name}`);
-        let reviewer = user.accountUuid == me.accountUuid ? null : me
-        let prs = await getPrsMadeByUser(cfg, user, reviewer, onlyMaster)
-        spinAfter.stop()
+    for(const userPrs of usersPrs) {
+        const user = <UserSummary> users.find(user => user.accountUuid == userPrs.taskId)
+        if(!!userPrs.outcome.err) {
+            console.log(`${user.name} -------------------------------`)
+            console.log(`\tPR list could not be fetched: `, userPrs.outcome.err)
+        }
 
+        const prs = <PR[]> userPrs.outcome.result;
         if (prs.length == 0) {
             continue;
         }
