@@ -26,4 +26,5 @@ export function saveCache(cache: Cache) {
 export interface UserSummary {
     name: string
     accountUuid: string
+    uuid:string
 }

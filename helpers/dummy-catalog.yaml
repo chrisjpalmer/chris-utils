@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  annotations:
+    backstage.io/edit-url: https://bitbucket.org/<WORKSPACE>/<REPO>/src/production/catalog-info.yaml
+    backstage.io/source-location: url:https://bitbucket.org/<WORKSPACE>/<REPO>/src/production/
+    backstage.io/view-url: https://bitbucket.org/<WORKSPACE>/<REPO>
+    bitbucket.org/repo: <WORKSPACE>/<REPO>
+  namespace: default
+  name: <REPO>
+spec:
+  lifecycle: production
+  memberOf: []
+  owner: <OWNER>
+  system: <SYSTEM>
+  type: service

@@ -43,6 +43,7 @@ async function resolveUsers(cfg: Config, toResolve: string[]) : Promise<UserSumm
                 resolved.push({
                     name: _u,
                     accountUuid: found.user.account_id,
+                    uuid: found.user.uuid,
                 })
                 console.log(`\t resolved ${_u} ${resolved.length}/${toResolve.length}`)
             }

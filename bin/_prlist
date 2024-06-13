@@ -4,4 +4,4 @@ INSTALL_DIR=$HOME/scripts
 
 cd $INSTALL_DIR
 
-$INSTALL_DIR/node_modules/.bin/tsx ./prlist.ts $@
+$INSTALL_DIR/node_modules/.bin/tsx prlist.ts $@
