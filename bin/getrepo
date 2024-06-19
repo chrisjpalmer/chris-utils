@@ -1,0 +1,4 @@
+#!/bin/sh
+url=https://api.bitbucket.org/2.0/repositories/$1
+echo $url
+curl -H "Authorization: Bearer $TOKEN" $url | jq

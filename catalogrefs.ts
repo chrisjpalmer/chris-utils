@@ -6,7 +6,7 @@ import { getReferences } from "./helpers/sourcegraph";
 import { Diff, DiffedField } from "./helpers/diff";
 import readline from 'node:readline';
 import { gitAddFile, gitCheckoutBranch, gitClone, gitCommit, gitPushForce, gitShowP } from "./helpers/git";
-import { alphabeticallyInsert, componentDocument, spec, createDependsOn, createSystem, createTags, dependsOn, hasComponentDocument, hasSpec, hasDependsOn, hasMetadata, hasSystem, hasTags, metadata, readCatalogFile, setSystem, system, tags, catalogFile, catalogInfo, saveCatalogFile } from "./helpers/catalog";
+import { alphabeticallyInsert, componentDocument, spec, createDependsOn, createSystem, createTags, dependsOn, hasComponentDocument, hasSpec, hasDependsOn, hasMetadata, hasSystem, hasTags, metadata, readCatalogFile, setSystem, system, tags, catalogFile, catalogInfo, saveCatalogFile, owner, hasOwner } from "./helpers/catalog";
 import { loadUsers, makePr } from "./helpers/bitbucket";
 
 
@@ -26,7 +26,7 @@ async function catalogrefs () {
         process.exit();
     });
 
-    const sourceRepos = cfg.noCatalog;
+    const sourceRepos = cfg.repos;
 
     // validate config
     for(const repo of sourceRepos) {
@@ -43,6 +43,8 @@ async function catalogrefs () {
     
     // set actual
     await setActualCatalog(cfg, repos, spinner)
+
+    repos.forEach(r => console.log(`${r.name} has system ${r.catalog.system.actual}`))
 
     // set expected
     await setExpectedCatalog(cfg, sourceRepos, repos, spinner)
@@ -85,7 +87,7 @@ async function catalogrefs () {
         }
 
         // uncomment for pr workflow
-        continue
+        // continue
 
         if(!c.dependsOn.diff.different && !c.system.diff.different && !c.tags.diff.different) {
             console.log(`skipping ${name} as there are no differences`)
@@ -246,6 +248,7 @@ interface Catalog {
     dependsOn: DiffedField<string[]>;
     system: DiffedField<string>;
     tags: DiffedField<string[]>;
+    owner: string
 }
 
 async function initializeRepos(cfg:Config, cfgRepos: ConfigRepo[], spinner:SpinAfter) : Promise<Repo[]> {
@@ -261,7 +264,8 @@ async function initializeRepos(cfg:Config, cfgRepos: ConfigRepo[], spinner:SpinA
             catalog: {
                 dependsOn: new DiffedField(stringArrayDiffer, [], []), 
                 system: new DiffedField(systemDiffer, "", ""), 
-                tags: new DiffedField(stringArrayDiffer, [], [])
+                tags: new DiffedField(stringArrayDiffer, [], []),
+                owner: "",
             }
         })
     }
@@ -308,6 +312,11 @@ async function setActualCatalog(cfg:Config, repos: Repo[], spinner:SpinAfter) {
         if (hasSystem(sp)) {
             const sys = system(sp)
             r.catalog.system.actual = sys
+        }
+
+        if (hasOwner(sp)) {
+            const own = owner(sp)
+            r.catalog.owner = own
         }
         
         if(hasTags(meta)) {

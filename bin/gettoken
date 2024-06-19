@@ -1,0 +1,8 @@
+#!/bin/sh
+
+cid=$1
+sec=$2
+
+curl -X POST -u "$1:$2" \
+  https://bitbucket.org/site/oauth2/access_token \
+  -d grant_type=client_credentials | jq

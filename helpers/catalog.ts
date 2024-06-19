@@ -66,6 +66,23 @@ export function setSystem(spec: yaml.YAMLMap, value: string) {
     spec.set("system", value)
 }
 
+// owner
+export function owner(spec: yaml.YAMLMap) {
+    return spec.get("owner") as string | null
+}
+
+export function hasOwner(spec: yaml.YAMLMap): boolean {
+    return spec.has("owner")
+}
+
+export function createOwner(spec: yaml.YAMLMap<string>) {
+    alphabeticallyInsertMapItem(spec, new yaml.Pair("owner", ""))
+}
+
+export function setOwner(spec: yaml.YAMLMap, value: string) {
+    spec.set("owner", value)
+}
+
 
 /// Tags
 export function metadata(comp: yaml.Document) {

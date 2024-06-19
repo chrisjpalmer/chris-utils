@@ -16,6 +16,7 @@
     "axios": "^1.6.8",
     "blessed": "^0.1.81",
     "command-line-args": "^5.2.1",
+    "csv": "^6.3.9",
     "eventsource": "^2.0.2",
     "ora": "^8.0.1",
     "qs": "^6.12.1",
