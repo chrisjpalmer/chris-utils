@@ -23,7 +23,7 @@ export async function prchainCommander (cfg: PRChainCommanderConfig) {
         process.exit();
     });
 
-    const options = commandLineArgs(optionDefinitions);
+    const options = commandLineArgs(optionDefinitions, {partial: true});
     const output = options["output"]
    
     const branches = getBranches(cfg.enterBranchesPrompt, options["branches"], workDir, options["chain"]).filter(cfg.branchesFilter)

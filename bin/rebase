@@ -6,23 +6,24 @@ INSTALL_DIR=$HOME/scripts
 
 cd $INSTALL_DIR
 
-arglist=""
+INTERACTIVE=true
+
+arglist="$@"
 for var in "$@"
 do
-    if [ "${var}" == "-i" ]; then
-        INTERACTIVE=true
-        OUTPUT="$(mktemp)"
-        arglist="${arglist} -o ${OUTPUT}"
-    else
-        arglist="${arglist} ${var}"
+    if [ "${var}" == "-m" ]; then
+        INTERACTIVE=false        
     fi
 done
 
+if [ "${INTERACTIVE}" == "true" ]; then
+    OUTPUT="$(mktemp)"
+    arglist="${arglist} -o ${OUTPUT}"
+fi
+
 $INSTALL_DIR/node_modules/.bin/tsx ./rebase.ts $arglist
 
-if [ -n "${INTERACTIVE}" ]; then
-    # echo "Executing $(cat "${OUTPUT}")"
-    # sleep 1
+if [ "${INTERACTIVE}" == "true" ]; then
     cd "${WORKDIR}" && bash "${OUTPUT}"
 fi
 
