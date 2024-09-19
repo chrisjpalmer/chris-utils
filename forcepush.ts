@@ -3,7 +3,8 @@ import { prchainCommander } from "./prchain-commander";
 async function forcepush () {
     return prchainCommander({
         enterBranchesPrompt: "Enter the branches for forcepushing:",
-        branchesForUserSelection: (branches:string[]) => branches.slice(1),
+        branchesFilter: (branch:string) => branch != 'master' && branch != 'main',
+        branchesForUserSelection: (branches:string[]) => branches,
         makeCmd: makeCmd
     })
 }

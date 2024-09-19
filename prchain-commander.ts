@@ -5,6 +5,7 @@ import { getUserSelection } from "./helpers/select";
 
 export interface PRChainCommanderConfig {
     enterBranchesPrompt:string
+    branchesFilter: (branch:string) => boolean,
     branchesForUserSelection: (branches:string[]) => string[],
     makeCmd: (branches:string[], selectedBranchIdx:number) => string
 }
@@ -25,7 +26,7 @@ export async function prchainCommander (cfg: PRChainCommanderConfig) {
     const options = commandLineArgs(optionDefinitions);
     const output = options["output"]
    
-    const branches = getBranches(cfg.enterBranchesPrompt, options["branches"], workDir, options["chain"])
+    const branches = getBranches(cfg.enterBranchesPrompt, options["branches"], workDir, options["chain"]).filter(cfg.branchesFilter)
 
     if (!!output) {
         const branch = await getUserSelection(cfg.branchesForUserSelection(branches))

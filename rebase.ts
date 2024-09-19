@@ -3,6 +3,7 @@ import { prchainCommander } from "./prchain-commander";
 async function rebase () {
     return prchainCommander({
         enterBranchesPrompt: "Enter the branches for rebasing:",
+        branchesFilter: () => true,
         branchesForUserSelection: (branches:string[]) => branches.slice(1),
         makeCmd: makeCmd
     })
