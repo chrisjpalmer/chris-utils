@@ -18,7 +18,7 @@ do
     fi
 done
 
-$INSTALL_DIR/node_modules/.bin/tsx ./rebase.ts $arglist
+$INSTALL_DIR/node_modules/.bin/tsx ./forcepush.ts $arglist
 
 if [ -n "${INTERACTIVE}" ]; then
     # echo "Executing $(cat "${OUTPUT}")"

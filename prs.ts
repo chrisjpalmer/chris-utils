@@ -1,6 +1,6 @@
 import { getBranches, loadConfig, getWorkdir } from "./helpers"
 import * as shelljs from 'shelljs';
-import axios, { AxiosResponse } from 'axios';
+import commandLineArgs, { OptionDefinition } from "command-line-args";
 import * as path from 'path';
 import { PR, getAll } from "./helpers/bitbucket";
 
@@ -9,7 +9,16 @@ async function prs () {
     let cfg = loadConfig()
     const workdir = getWorkdir()
     const repoSlug:string = path.basename(workdir)
-    const branches = getBranches('Enter the branches to fetch PR urls for:').filter(b => b != 'master')
+
+    const optionDefinitions: OptionDefinition[] = [
+        { name: 'chain', alias: 'c', type: String, defaultValue: "main.prchain" },
+        { name: 'branches', alias: 'b', type: String, multiple: true },
+    ]
+    
+    const options = commandLineArgs(optionDefinitions);
+    const chainFile = options["chain"]
+
+    const branches = getBranches('Enter the branches to fetch PR urls for:', options["branches"], workdir, options["chain"]).filter(b => b != 'master')
     
     // resolve the links for all PRs
     let links:string[] = []
