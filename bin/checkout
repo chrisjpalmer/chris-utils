@@ -1,0 +1,30 @@
+#!/bin/sh
+
+export WORKDIR=$PWD
+
+INSTALL_DIR=$HOME/scripts
+
+cd $INSTALL_DIR
+
+INTERACTIVE=true
+
+arglist="$@"
+for var in "$@"
+do
+    if [ "${var}" == "-m" ]; then
+        INTERACTIVE=false        
+    fi
+done
+
+if [ "${INTERACTIVE}" == "true" ]; then
+    OUTPUT="$(mktemp)"
+    arglist="${arglist} -o ${OUTPUT}"
+fi
+
+$INSTALL_DIR/node_modules/.bin/tsx ./checkout.ts $arglist
+
+if [ "${INTERACTIVE}" == "true" ]; then
+    cd "${WORKDIR}" && bash "${OUTPUT}"
+fi
+
+rm -f "${OUTPUT}"

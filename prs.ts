@@ -28,10 +28,16 @@ async function prs () {
         let msg = shelljs.exec(`git log --format=%B -n 1 ${commit}`, {cwd:workdir, silent: true}).toString()
         msg = msg.split("\n")[0]
         
-        const prs = await getAll<PR>(cfg, `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}/commit/${commit}/pullrequests`)
+        let prs:PR[] = []
+        try {
+            prs = await getAll<PR>(cfg, `https://api.bitbucket.org/2.0/repositories/${cfg.workspace}/${repoSlug}/commit/${commit}/pullrequests`)
 
-        if(prs.length == 0) {
-            throw 'api response values was empty'
+            if(prs.length == 0) {
+                throw 'api response values was empty'
+            }
+        } catch(e) {
+            console.log(`Error fetching PR for branch ${branch} - ${e}`)
+            continue;
         }
         let url = prs[0].links.html.href;
 
